@@ -1,4 +1,4 @@
-#Hello!!
+#Hello!! Max
 setwd("/Users/basiasudol/Documents/LABWD/young-people-survey")
 
 responses <- read.table("responses.csv", header = TRUE, sep =",")
