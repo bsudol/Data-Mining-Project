@@ -11,10 +11,6 @@ responses$Sport = (responses$Active.sport+responses$Passive.sport)/2 #new variab
 responses$Interneta[responses$Internet.usage == "most of the day"] <- "1" 
 responses$Interneta[responses$Internet.usage == "few hours a day"] <- "3" 
 responses$Interneta[responses$Internet.usage == "less than an hour a day"] <- "5" 
-responses$Smokingnum[responses$Smoking=="never smoked"] <- "5"
-responses$Smokingnum[responses$Smoking=="tried smoking"] <- "4"
-responses$Smokingnum[responses$Smoking=="current smoker"] <- "1"
-responses$Smokingnum[responses$Smoking=="former smoker"] <- "2"
 responses$Smokingbin[responses$Smoking=="former smoker"] <- "Yes"
 responses$Smokingbin[responses$Smoking=="current smoker"] <- "Yes"
 responses$Smokingbin[responses$Smoking=="tried smoking"] <- "No"
@@ -39,9 +35,9 @@ test_idx = responses[-train_idx,]
 
 library(gam)
 library(splines)
-gam0 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smokingnum + Age, data = responses)
+gam0 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smoking + Age, data = responses)
 summary(gam0)
-gam01 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smokingnum + BMI, data = responses)
+gam01 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smoking + BMI, data = responses)
 summary(gam01)
 #R squared is very low here and BMI seems to not be significant as a predictor. Take out some high p value variables and do again:
 gam02 = lm(Happiness.in.life ~ Healthy.eating + Sport + Interneta + Spending.on.healthy.eating, data = responses)
