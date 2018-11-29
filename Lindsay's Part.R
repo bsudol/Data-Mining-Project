@@ -11,16 +11,7 @@ dim(responses)
 
 #create new applicable variables
 responses$Sport = (responses$Active.sport+responses$Passive.sport)/2 #new variable for average 'sportiness'
-responses$Interneta[responses$Internet.usage == "most of the day"] <- "1"
-responses$Interneta[responses$Internet.usage == "few hours a day"] <- "3"
-responses$Interneta[responses$Internet.usage == "less than an hour a day"] <- "5"
-responses$Smokingbin[responses$Smoking=="former smoker"] <- "Yes"
-responses$Smokingbin[responses$Smoking=="current smoker"] <- "Yes"
-responses$Smokingbin[responses$Smoking=="tried smoking"] <- "No"
-responses$Smokingbin[responses$Smoking=="never smoked"] <- "No"
-
 responses$BMI = responses$Weight/(responses$Height/100)^2
-
 #finish setting up data make training and test sets
 responses <- na.omit(responses)
 dim(responses)
@@ -59,3 +50,26 @@ anova(gam1, gam2, gam3, gam4, gam5 ,test="F")
 #gam2 is the only one that has a good p value here (less than 0.05 means to accept the hypothesis)
 
 summary(gam2)
+
+
+#boosting#
+## example###
+library(gbm)
+set.seed(2)
+train=sample(1:nrow(responses), nrow(responses)/2)
+Happy=ifelse(responses$Happiness.in.life<=3.7,0,1)
+responses_happy=data.frame(responses,Happy)
+responses.test=responses_happy[-train,]
+boost.responses= gbm(Happy~ Health + Healthy.eating + Sport + Internet.usage + Spending.on.healthy.eating + Spending.on.looks + Smoking + Age + God + Number.of.friends + Friends.versus.money + Alcohol + Education + Pets + Fun.with.friends, data = responses_happy[train,], distribution = "bernoulli", n.trees = 1000, interaction.depth = 4) 
+#default shrinkage = 0.001
+summary(boost.responses)
+
+
+yhat.boost = predict(boost.responses, responses.test, n.trees=1000)
+Happy_test=Happy[-train]
+yhat.boost<-ifelse(yhat.boost>0, 1,0)
+table(yhat.boost, Happy_test)
+classification_error=(c(1,2)+c(2,1))/393
+classification_error
+
+
