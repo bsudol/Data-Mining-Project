@@ -1,6 +1,3 @@
-#Hello!!
-#Alexa
-#Hello!! Max
 setwd("/Users/basiasudol/Documents/LABWD/young-people-survey")
 
 responses <- read.table("responses.csv", header = TRUE, sep =",")
@@ -58,3 +55,89 @@ anova(gam1, gam2, gam3, gam4, gam5 ,test="F")
 #gam2 is the only one that has a good p value here (less than 0.05 means to accept the hypothesis)
 
 summary(gam2)
+
+## SUBSET SELECTIONS ##
+library(leaps)
+
+#attempt to simply find subset of all variables:
+#Forward selection
+ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=responses,nvmax=5, method = 'forward')
+#Get following error:
+#Warning message:
+#In leaps.setup(x, y, wt = wt, nbest = nbest, nvmax = nvmax, force.in = force.in,  :
+#                 8  linear dependencies found
+
+
+#Try removing categorical variables, only numerical:
+num_responses = responses[sapply(responses, is.numeric)] 
+ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses,nvmax=5, method = 'forward')
+#Get only 1 linear dependency this time
+
+#search for significant correlation via P value:
+#install.packages("Hmisc")
+library(Hmisc)
+
+correlations = rcorr(as.matrix(num_responses))
+
+for (i in 1:ncol(num_responses)){
+  for (j in 1:ncol(num_responses)){
+    if ( !is.na(correlations$P[i,j])){
+      if (correlations$P[i,j] < .05) {
+        print(paste(rownames(correlations$P)[i], "-" , colnames(correlations$P)[j], ": ", correlations$P[i,j]))
+      }
+    }
+  }
+}
+
+#Way too many "significant" correlations (what might that mean?). Just look for high correlation vals now:
+for (i in 1:ncol(num_responses)){
+  for (j in 1:ncol(num_responses)){
+    if ( !is.na(correlations$r[i,j])){
+      if ( (abs(correlations$r[i,j]) >= .80) && (abs(correlations$r[i,j]) != 1 )) {
+        print(paste(rownames(correlations$r)[i], "-" , colnames(correlations$r)[j], ": ", correlations$r[i,j]))
+      }
+    }
+  }
+}
+
+#Try running without Weight/BMI
+num_responses.fixed = subset(num_responses, select = -c(BMI))
+ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed,nvmax=5, method = 'forward')
+#1 linear dependency still found
+
+#For some reseaon Sport is causing the problem. Couldn't tell ya why.
+num_responses.fixed2 = subset(num_responses, select = -c(Sport))
+
+#5 VARIABLES
+#Forward
+ss.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'forward')
+#IT FUCKING WORKED OH MY GOD
+summary(ss.fwd.5)
+#Energy levels, loneliness, changing the past, personality, dreams
+
+#Backward
+ss.bwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'backward')
+summary(ss.bwd.5)
+# Energy levels, loneliness, changing the past, Personality, dreams
+
+#Best
+ss.best.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'exhaustive', really.big = TRUE)
+summary(ss.best.5)
+# Energy levels, loneliness, changing the past, Personality, dreams
+
+#10 VARIABLES
+#Forward
+ss.fwd.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'forward')
+summary(ss.fwd.10)
+# Energy levels, Loneliness, changing the past, Personality, Dreams, 
+# Fun with friends, Parents advice, Reliability, Achievements,
+
+#Backward
+ss.bwd.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'backward')
+summary(ss.bwd.10)
+# Energy levels, Loneliness, changing the past, Personality, Dreams, 
+# Fun with friends, Reliability, Achievements, Parents advice, Phobia of darkness
+
+#Best - Yup so running this crashed my computer, do not recommend
+ss.best.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'exhaustive', really.big = TRUE)
+summary(ss.best.10)
