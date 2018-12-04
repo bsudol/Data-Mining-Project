@@ -7,10 +7,6 @@ dim(responses)
 
 #create new applicable variables
 responses$Sport = (responses$Active.sport+responses$Passive.sport)/2 #new variable for average 'sportiness'
-responses$Smokingbin[responses$Smoking=="former smoker"] <- "Yes"
-responses$Smokingbin[responses$Smoking=="current smoker"] <- "Yes"
-responses$Smokingbin[responses$Smoking=="tried smoking"] <- "No"
-responses$Smokingbin[responses$Smoking=="never smoked"] <- "No"
 responses$BMI = responses$Weight/(responses$Height/100)^2
 
 #finish setting up data make training and test sets
@@ -22,116 +18,29 @@ train_idx = sample(1:nrow(responses), 3/4*nrow(responses))
 test_idx = responses[-train_idx,]
 train_idx = responses[train_idx,]
 
-## SUBSET SELECTIONS ##
-library(leaps)
-
-#attempt to simply find subset of all variables:
-#Forward selection
-ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=responses,nvmax=5, method = 'forward')
-#Get following error:
-#Warning message:
-#In leaps.setup(x, y, wt = wt, nbest = nbest, nvmax = nvmax, force.in = force.in,  :
-#                 8  linear dependencies found
 
 
-#Try removing categorical variables, only numerical:
-num_responses = responses[sapply(responses, is.numeric)] 
-ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses,nvmax=5, method = 'forward')
-#Get only 1 linear dependency this time
 
-#search for significant correlation via P value:
-#install.packages("Hmisc")
-library(Hmisc)
-
-correlations = rcorr(as.matrix(num_responses))
-
-for (i in 1:ncol(num_responses)){
-  for (j in 1:ncol(num_responses)){
-    if ( !is.na(correlations$P[i,j])){
-      if (correlations$P[i,j] < .05) {
-        print(paste(rownames(correlations$P)[i], "-" , colnames(correlations$P)[j], ": ", correlations$P[i,j]))
-      }
-    }
-  }
-}
-
-#Way too many "significant" correlations (what might that mean?). Just look for high correlation vals now:
-for (i in 1:ncol(num_responses)){
-  for (j in 1:ncol(num_responses)){
-    if ( !is.na(correlations$r[i,j])){
-      if ( (abs(correlations$r[i,j]) >= .80) && (abs(correlations$r[i,j]) != 1 )) {
-        print(paste(rownames(correlations$r)[i], "-" , colnames(correlations$r)[j], ": ", correlations$r[i,j]))
-      }
-    }
-  }
-}
-
-#Try running without Weight/BMI
-num_responses.fixed = subset(num_responses, select = -c(BMI))
-ss.all.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed,nvmax=5, method = 'forward')
-#1 linear dependency still found
-
-#For some reseaon Sport is causing the problem. Couldn't tell ya why.
-num_responses.fixed2 = subset(num_responses, select = -c(Sport))
-
-#5 VARIABLES
-#Forward
-ss.fwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'forward')
-#IT FUCKING WORKED OH MY GOD
-summary(ss.fwd.5)
-#Energy levels, loneliness, changing the past, personality, dreams
-
-#Backward
-ss.bwd.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'backward')
-summary(ss.bwd.5)
-# Energy levels, loneliness, changing the past, Personality, dreams
-
-#Best
-ss.best.5 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=5, method = 'exhaustive', really.big = TRUE)
-summary(ss.best.5)
-# Energy levels, loneliness, changing the past, Personality, dreams
-
-#10 VARIABLES
-#Forward
-ss.fwd.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'forward')
-summary(ss.fwd.10)
-# Energy levels, Loneliness, changing the past, Personality, Dreams, 
-# Fun with friends, Parents advice, Reliability, Achievements,
-
-#Backward
-ss.bwd.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'backward')
-summary(ss.bwd.10)
-# Energy levels, Loneliness, changing the past, Personality, Dreams, 
-# Fun with friends, Reliability, Achievements, Parents advice, Phobia of darkness
-
-#Best - Yup so running this crashed my computer, do not recommend
-ss.best.10 = regsubsets(Happiness.in.life~.,data=num_responses.fixed2,nvmax=10, method = 'exhaustive', really.big = TRUE)
-summary(ss.best.10)
 
 
 #model selection using ANOVA
 #GAMS including splines and linear fns of spending on healthy food, concern about health, healthy eating, smoking and drinking habits, sports, internet usage.
 #including and excluding age and weight/height
 #response variable = Happiness in life (1-5 scale)
-#can do the same thing but using another happiness metric or using subsets such as boys & girls
 
 library(gam)
 library(splines)
 
 # Variables to analyze given best subset selection:
 # Energy levels, loneliness, changing the past, Personality, dreams, Fun with friends, Reliability, Parents advice
-gam0 = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends + Reliability + Parents..advice, data = responses)
-summary(gam0)
-#all variables are significant in this!
 gam001 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Spending.on.healthy.eating + Smoking + BMI + Age, data = responses)
 summary(gam001) #compare to this one where there are non significant variables... much higher p values
-
-#ANOVA
-#first two are linear models of the best subset selection variables and the lowest Gini from boosting tree.
+#these two are linear models of the best subset selection variables and the lowest Gini from boosting tree.
 gam01 = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends, data = responses)
 gam02 = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
-summary(gam01)
+summary(gam01) #more significant variables than gam02
 summary(gam02)
+
 
 #Best gini
 #loneliness, energy (spline), BMI polynomial (quad), changing past polynomial, numfriends, mood swings, healthy eating
@@ -140,45 +49,146 @@ summary(gam02)
 #looking at the results from the linear model, mood swings and BMI and healthy eating were the least significant so lets also consider those
 # high in priority to make nonlinear in the GAM.
 library(boot)
+
+
+
+
+
+
+#CROSS VALIDATION
 #loneliness
 cv.error=rep(0,4)
-for (i in 1:4) {
-  glm.fit = glm(Happiness.in.life ~ poly(Loneliness, i), data = responses)
-  cv.error[i] = cv.glm(responses, glm.fit, K=20)$delta[1]
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Loneliness, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
 }
-plot(cv.error, type="b") #degree 1 or 2
+plot(cv.error/20, type="b") #1 or 3
 
 #energy levels
 cv.error=rep(0,4)
-for (i in 1:4) {
-  glm.fit = glm(Happiness.in.life ~ poly(Energy.levels, i), data = responses)
-  cv.error[i] = cv.glm(responses, glm.fit, K=20)$delta[1]
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Energy.levels, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
 }
-plot(cv.error, type="b") #degree 2 or 3
+plot(cv.error/20, type="b") #degree 2
 
 #BMI
 cv.error=rep(0,4)
-for (i in 1:4) {
-  glm.fit = glm(Happiness.in.life ~ poly(BMI, i), data = responses)
-  cv.error[i] = cv.glm(responses, glm.fit, K=20)$delta[1]
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(BMI, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
 }
-plot(cv.error, type="b") #degree 1 or 2
+plot(cv.error/20, type="b") #degree 1
 
 #changing the past
 cv.error=rep(0,4)
-for (i in 1:4) {
-  glm.fit = glm(Happiness.in.life ~ poly(Changing.the.past, i), data = responses)
-  cv.error[i] = cv.glm(responses, glm.fit, K=20)$delta[1]
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Changing.the.past, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
 }
-plot(cv.error, type="b") #degree 1 or 2
+plot(cv.error/20, type="b") #degree 1
 
-#ANOVA
+#numfriends
+for (i in 1:20){
+  cv.error=rep(0,4)
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Number.of.friends, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 2
+
+#Mood swings
+cv.error=rep(0,4)
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Mood.swings, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 1
+
+#healthy eating
+cv.error=rep(0,4)
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Healthy.eating, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 1
+
+
+
+
+
+
+#FIRST ANOVA USING CROSS VALIDATION RESULTS
+gama = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Number.of.friends + Mood.swings + BMI +Healthy.eating, data = responses)
+gamb = gam(Happiness.in.life ~ Loneliness + poly(Energy.levels,2) + Changing.the.past + Number.of.friends + Mood.swings + BMI, data = responses)
+gamc = gam(Happiness.in.life ~ poly(Energy.levels,3) + poly(Loneliness,2) + Changing.the.past + Number.of.friends +  Mood.swings + BMI + Healthy.eating, data = responses)
+gamd = gam(Happiness.in.life ~ s(Energy.levels,2) + poly(Loneliness,3) + Changing.the.past + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
+anova(gama, gamb, gamc, gamd, test='F')
+#None of these were significant over the linear model... try more combinations.
+
+#ANOVA 2
 #going to take the nonlinear variables from Max's analysis and make sure to put those in polynomials the most (also paid attention to visually nonlinear/ lower p val in lm variables)
-gam1 = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Number.of.friends + Mood.swings + BMI, data = responses)
+gam1 = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Number.of.friends + Mood.swings + BMI +Healthy.eating, data = responses)
 gam2 = gam(Happiness.in.life ~ Energy.levels + poly(Loneliness,2) + Changing.the.past + Number.of.friends + poly(Mood.swings,2) + poly(BMI,2), data = responses)
-gam3 = gam(Happiness.in.life ~ poly(Energy.levels,2) + poly(Loneliness,2) + Changing.the.past + Number.of.friends +  poly(Mood.swings,2) + BMI + Healthy.eating, data = responses)
-gam4 = gam(Happiness.in.life ~ s(Energy.levels,2) + Loneliness + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
+gam4 = gam(Happiness.in.life ~ poly(Energy.levels,2) + poly(Loneliness,2) + Changing.the.past + Number.of.friends +  poly(Mood.swings,2) + BMI + Healthy.eating, data = responses)
+gam3 = gam(Happiness.in.life ~ s(Energy.levels,2) + Loneliness + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
 gam5 = gam(Happiness.in.life ~ s(Energy.levels) + poly(Loneliness,2) + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + poly(Healthy.eating,2), data = responses)
-anova(gam1, gam3, gam2, gam4, gam5, test='F')
-#gam4 is the best
+anova(gam1, gam2, gam3, gam4, gam5, test='F')
+#gam3 is the best and has compelling evidence that this is better than a linear relationship
 
+#ANOVA 3
+#try more functions against gam3:
+gamaa = gam(Happiness.in.life ~ s(Energy.levels,2) + Loneliness + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
+gambb = gam(Happiness.in.life ~ poly(Energy.levels,2) + poly(Loneliness,3) + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
+gamcc = gam(Happiness.in.life ~ s(Energy.levels,2) + s(Loneliness,3) + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = responses)
+anova(gamaa, gambb, gamcc, test='F')
+#gamcc is the best here
+
+
+
+
+
+
+#COMPARE PREDICTION ACCURACIES of best models
+#now take linear model of all best subset selection variables, plus gam3 and gamcc, and compare prediction accuracy.
+summary(gam01) #low Rsquared of 0.4 so I dont think this will make the best predictions
+summary(gam3) #lots of significant variables, AIC of 1583
+summary(gamcc) #same amt of significant variables, AIC of 1586
+
+#par(mfrow=c(1,3))
+#plot.gam(gam01, se=TRUE, col='green')
+#plot(gam3, se=TRUE,col="blue")
+#plot(gamcc, se=TRUE, col="red")
+
+#train new models just on the training set
+gamLIN = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends, data = train_idx)
+gamFirst = gam(Happiness.in.life ~ s(Energy.levels,2) + Loneliness + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = train_idx)
+gamSecond = gam(Happiness.in.life ~ s(Energy.levels,2) + s(Loneliness,3) + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = train_idx)
+
+predLIN=predict(gamLIN, newdata=test_idx)
+predFirst = predict(gamFirst, newdata = test_idx)
+predSecond = predict(gamSecond, newdata = test_idx)
+
+accLIN = mean((predLIN-test_idx$Happiness.in.life)^2)
+accFirst = mean((predFirst-test_idx$Happiness.in.life)^2)
+accSecond = mean((predSecond-test_idx$Happiness.in.life)^2)
+accLIN
+accFirst
+accSecond
+
+#results: they are all fairly similar. we can conclude that the second one is slightly more accurate, but all three are good
+#we can go into pros and cons of each model and which ones are computationally less expensive and other reasons to pick one 
+#model over the other
