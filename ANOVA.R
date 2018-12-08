@@ -157,8 +157,9 @@ gamcc = gam(Happiness.in.life ~ s(Energy.levels,2) + s(Loneliness,3) + poly(Chan
 anova(gamaa, gambb, gamcc, test='F')
 #gamcc is the best here
 
-
-
+#results: they are all fairly similar. we can conclude that the second one is slightly more accurate, but all three are good
+#we can go into pros and cons of each model and which ones are computationally less expensive and other reasons to pick one 
+#model over the other
 
 
 
@@ -177,18 +178,70 @@ summary(gamcc) #same amt of significant variables, AIC of 1586
 gamLIN = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends, data = train_idx)
 gamFirst = gam(Happiness.in.life ~ s(Energy.levels,2) + Loneliness + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = train_idx)
 gamSecond = gam(Happiness.in.life ~ s(Energy.levels,2) + s(Loneliness,3) + poly(Changing.the.past,2) + Number.of.friends + Mood.swings + BMI + Healthy.eating, data = train_idx)
+gamBest = gam(Happiness.in.life ~ s(Personality,2) + Loneliness + Changing.the.past + s(Energy.levels,2) + Dreams + Fun.with.friends , data = responses)
 
 predLIN=predict(gamLIN, newdata=test_idx)
 predFirst = predict(gamFirst, newdata = test_idx)
 predSecond = predict(gamSecond, newdata = test_idx)
+predBest = predict(gamBest, newdata = test_idx)
 
 accLIN = mean((predLIN-test_idx$Happiness.in.life)^2)
 accFirst = mean((predFirst-test_idx$Happiness.in.life)^2)
 accSecond = mean((predSecond-test_idx$Happiness.in.life)^2)
+accBest = mean((predBest-test_idx$Happiness.in.life)^2)
 accLIN
 accFirst
 accSecond
+accBest
 
 #results: they are all fairly similar. we can conclude that the second one is slightly more accurate, but all three are good
 #we can go into pros and cons of each model and which ones are computationally less expensive and other reasons to pick one 
 #model over the other
+
+
+
+#################
+#################
+#################
+#################
+
+
+#do more CV for the other vars: personality, dreams, fun with friends
+#Personality
+cv.error=rep(0,4)
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Personality, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 2
+#Dreams
+cv.error=rep(0,4)
+for (i in 1:20){
+  for (i in 1:4) {
+    glm.fit = glm(Happiness.in.life ~ poly(Dreams, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 1
+#Fun.with.friends
+cv.error=rep(0,3)
+for (i in 1:20){
+  for (i in 1:3) {
+    glm.fit = glm(Happiness.in.life ~ poly(Fun.with.friends, i), data = responses)
+    cv.error[i] = cv.error[i] + cv.glm(responses, glm.fit, K=20)$delta[1]
+  }
+}
+plot(cv.error/20, type="b") #degree 1
+
+
+gamlinear = lm(Happiness.in.life ~ Energy.levels + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends , data = responses)
+gamone = gam(Happiness.in.life ~ poly(Energy.levels,2) + Loneliness + Changing.the.past + Personality + Dreams + Fun.with.friends , data = responses)
+gamtwo = gam(Happiness.in.life ~ poly(Personality,2) + Loneliness + Changing.the.past + Energy.levels + Dreams + Fun.with.friends , data = responses)
+gamthree = gam(Happiness.in.life ~ poly(Personality,2) + Loneliness + Changing.the.past + poly(Energy.levels,2) + Dreams + Fun.with.friends , data = responses)
+gamfour = gam(Happiness.in.life ~ s(Personality,2) + Loneliness + Changing.the.past + s(Energy.levels,2) + Dreams + Fun.with.friends , data = responses)
+gamfive = gam(Happiness.in.life ~ s(Personality,2) + Loneliness + Changing.the.past + Energy.levels + Dreams + Fun.with.friends , data = responses)
+gamsix = gam(Happiness.in.life ~ Personality + Loneliness + Changing.the.past + s(Energy.levels,2) + Dreams + Fun.with.friends , data = responses)
+anova(gamlinear,gamone,gamtwo,gamthree,gamfour, gamfive, gamsix, test='F')
+#gam four with two splines is the only significant model
