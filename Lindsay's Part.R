@@ -29,31 +29,8 @@ test_idx = responses[-train_idx,]
 
 library(gam)
 library(splines)
-gam0 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smoking + Age, data = responses)
-summary(gam0)
-gam01 = lm(Happiness.in.life ~ Health + Healthy.eating + Sport + Interneta + Spending.on.healthy.eating + Smoking + BMI, data = responses)
-summary(gam01)
-#R squared is very low here and BMI seems to not be significant as a predictor. Take out some high p value variables and do again:
-gam02 = lm(Happiness.in.life ~ Healthy.eating + Sport + Interneta + Spending.on.healthy.eating, data = responses)
-summary(gam02)
-
-#ANOVA
-#could try to do this twice, one with , subset=(gender!="female") and one for !=male
-#take the variables that are included in best subset selection and do an ANOVA
-gam1 = lm(Happiness.in.life ~ Sport + Healthy.eating + Interneta + Spending.on.healthy.eating, data = responses)
-gam2=gam(Happiness.in.life ~ Sport + Healthy.eating + Interneta + s(Spending.on.healthy.eating), data = responses)
-gam3=gam(Happiness.in.life ~ Sport + Healthy.eating + Interneta + s(Spending.on.healthy.eating), data = responses)
-gam4=gam(Happiness.in.life ~ poly(Sport,3) + Healthy.eating + Interneta + poly(Spending.on.healthy.eating, 3), data = responses)
-gam5=gam(Happiness.in.life ~ Sport + s(Healthy.eating) + Interneta + poly(Spending.on.healthy.eating, 4), data = responses)
-gam6=gam(Happiness.in.life ~ s(Sport) + Healthy.eating + Interneta + poly(Spending.on.healthy.eating, 3), data = responses)
-anova(gam1, gam2, gam3, gam4, gam5 ,test="F")
-#gam2 is the only one that has a good p value here (less than 0.05 means to accept the hypothesis)
-
-summary(gam2)
-
 
 #boosting#
-## example###
 library(gbm)
 set.seed(2)
 train=sample(1:nrow(responses), nrow(responses)/2)
