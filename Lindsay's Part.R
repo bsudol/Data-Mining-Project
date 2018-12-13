@@ -30,7 +30,8 @@ test_idx = responses[-train_idx,]
 library(gam)
 library(splines)
 
-#boosting#
+####5. Boosting####
+#### 5.1 Boosting on Training Data ####
 library(gbm)
 set.seed(2)
 train=sample(1:nrow(responses), nrow(responses)/2)
@@ -49,5 +50,8 @@ yhat.boost<-ifelse(yhat.boost>0, 1,0)
 C<-table(yhat.boost, Happy_test)
 classification_error<-(C[1,2]+C[2,1])/393
 classification_error
+
+####5.2 Boosting on Test Data####
+test_responses<-read.table("Data-Mining Youth Survey (Responses) - Form Responses 1.csv", header = TRUE, sep =",")
 
 
